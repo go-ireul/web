@@ -1,5 +1,5 @@
 // Copyright 2013 Martini Authors
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -13,7 +13,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
 	"encoding/base64"
@@ -23,9 +23,11 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"ireul.com/binfs"
 )
 
-// StaticOptions is a struct for specifying configuration options for the macaron.Static middleware.
+// StaticOptions is a struct for specifying configuration options for the web.Static middleware.
 type StaticOptions struct {
 	// Prefix is the optional prefix used to serve the static directory content
 	Prefix string
@@ -39,6 +41,8 @@ type StaticOptions struct {
 	// ETag defines if we should add an ETag header
 	// https://developers.google.com/web/fundamentals/performance/optimizing-content-efficiency/http-caching#validating-cached-responses-with-etags
 	ETag bool
+	// BinFS defines if use ireul.com/binfs
+	BinFS bool
 	// FileSystem is the interface for supporting any implmentation of file system.
 	FileSystem http.FileSystem
 }
@@ -105,7 +109,11 @@ func prepareStaticOption(dir string, opt StaticOptions) StaticOptions {
 		opt.Prefix = strings.TrimRight(opt.Prefix, "/")
 	}
 	if opt.FileSystem == nil {
-		opt.FileSystem = newStaticFileSystem(dir)
+		if opt.BinFS {
+			opt.FileSystem = binfs.FileSystem()
+		} else {
+			opt.FileSystem = newStaticFileSystem(dir)
+		}
 	}
 	return opt
 }

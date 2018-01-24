@@ -1,5 +1,5 @@
 // Copyright 2013 Martini Authors
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -13,25 +13,20 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
 	"fmt"
 	"log"
 	"net/http"
 	"reflect"
-	"runtime"
 	"time"
 )
 
 var (
-	ColorLog      = true
+	ColorLog      = false
 	LogTimeFormat = "2006-01-02 15:04:05"
 )
-
-func init() {
-	ColorLog = runtime.GOOS != "windows"
-}
 
 // LoggerInvoker is an inject.FastInvoker wrapper of func(ctx *Context, log *log.Logger).
 type LoggerInvoker func(ctx *Context, log *log.Logger)
@@ -45,29 +40,9 @@ func (invoke LoggerInvoker) Invoke(params []interface{}) ([]reflect.Value, error
 func Logger() Handler {
 	return func(ctx *Context, log *log.Logger) {
 		start := time.Now()
-
-		log.Printf("%s: Started %s %s for %s", time.Now().Format(LogTimeFormat), ctx.Req.Method, ctx.Req.RequestURI, ctx.RemoteAddr())
-
 		rw := ctx.Resp.(ResponseWriter)
 		ctx.Next()
-
-		content := fmt.Sprintf("%s: Completed %s %s %v %s in %v", time.Now().Format(LogTimeFormat), ctx.Req.Method, ctx.Req.RequestURI, rw.Status(), http.StatusText(rw.Status()), time.Since(start))
-		if ColorLog {
-			switch rw.Status() {
-			case 200, 201, 202:
-				content = fmt.Sprintf("\033[1;32m%s\033[0m", content)
-			case 301, 302:
-				content = fmt.Sprintf("\033[1;37m%s\033[0m", content)
-			case 304:
-				content = fmt.Sprintf("\033[1;33m%s\033[0m", content)
-			case 401, 403:
-				content = fmt.Sprintf("\033[4;31m%s\033[0m", content)
-			case 404:
-				content = fmt.Sprintf("\033[1;31m%s\033[0m", content)
-			case 500:
-				content = fmt.Sprintf("\033[1;36m%s\033[0m", content)
-			}
-		}
+		content := fmt.Sprintf("%s %s %v %s %v", ctx.Req.Method, ctx.Req.RequestURI, rw.Status(), http.StatusText(rw.Status()), time.Since(start))
 		log.Println(content)
 	}
 }

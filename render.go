@@ -1,5 +1,5 @@
 // Copyright 2013 Martini Authors
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -13,7 +13,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
 	"bytes"
@@ -31,7 +31,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Unknwon/com"
+	"ireul.com/binfs"
+	"ireul.com/com"
 )
 
 const (
@@ -110,6 +111,8 @@ type (
 		PrefixXML []byte
 		// Allows changing of output to XHTML instead of HTML. Default is "text/html"
 		HTMLContentType string
+		// BinFS defines is ireul.com/binfs is using
+		BinFS bool
 		// TemplateFileSystem is the interface for supporting any implmentation of template file system.
 		TemplateFileSystem
 	}
@@ -120,6 +123,7 @@ type (
 		Layout string
 	}
 
+	// Render the render
 	Render interface {
 		http.ResponseWriter
 		SetResponseWriter(http.ResponseWriter)
@@ -154,16 +158,75 @@ func NewTplFile(name string, data []byte, ext string) *TplFile {
 	return &TplFile{name, data, ext}
 }
 
+// Name returns name of template file
 func (f *TplFile) Name() string {
 	return f.name
 }
 
+// Data returns data of template file
 func (f *TplFile) Data() []byte {
 	return f.data
 }
 
+// Ext returns the extension name of files
 func (f *TplFile) Ext() string {
 	return f.ext
+}
+
+// BinFSTplFileSystem BinFS backed TemplateFileSystem
+type BinFSTplFileSystem struct {
+	files []TemplateFile
+}
+
+// NewBinFSTemplateFileSystem create a new BinFSTplFileSystem
+func NewBinFSTemplateFileSystem(opt RenderOptions) BinFSTplFileSystem {
+	files := []TemplateFile{}
+
+	// Directories are composed in reverse order because later one overwrites previous ones,
+	// so once found, we can directly jump out of the loop.
+	dirs := make([]string, 0, len(opt.AppendDirectories)+1)
+	for i := len(opt.AppendDirectories) - 1; i >= 0; i-- {
+		dirs = append(dirs, opt.AppendDirectories[i])
+	}
+	dirs = append(dirs, opt.Directory)
+
+	for _, dir := range dirs {
+		comps := strings.Split(dir, "/")
+		n := binfs.Find(comps...)
+		n.Walk(func(c *binfs.Node) {
+			if c.Chunk == nil {
+				return
+			}
+			rel := strings.Join(c.Path[len(n.Path):], "/")
+			ext := GetExt(rel)
+			for _, extension := range opt.Extensions {
+				if ext != extension {
+					continue
+				}
+				name := rel[:len(rel)-len(ext)]
+				files = append(files, NewTplFile(name, c.Chunk.Data, ext))
+			}
+		})
+	}
+
+	return BinFSTplFileSystem{
+		files: files,
+	}
+}
+
+// Get returns a io.Reader from name
+func (fs BinFSTplFileSystem) Get(name string) (io.Reader, error) {
+	for i := range fs.files {
+		if fs.files[i].Name()+fs.files[i].Ext() == name {
+			return bytes.NewReader(fs.files[i].Data()), nil
+		}
+	}
+	return nil, fmt.Errorf("file '%s' not found", name)
+}
+
+// ListFiles list all files
+func (fs BinFSTplFileSystem) ListFiles() []TemplateFile {
+	return fs.files
 }
 
 // TplFileSystem implements TemplateFileSystem interface.
@@ -277,10 +340,14 @@ func compile(opt RenderOptions) *template.Template {
 	t := template.New(opt.Directory)
 	t.Delims(opt.Delims.Left, opt.Delims.Right)
 	// Parse an initial template in case we don't have any.
-	template.Must(t.Parse("Macaron"))
+	template.Must(t.Parse("Web"))
 
 	if opt.TemplateFileSystem == nil {
-		opt.TemplateFileSystem = NewTemplateFileSystem(opt, false)
+		if opt.BinFS {
+			opt.TemplateFileSystem = NewBinFSTemplateFileSystem(opt)
+		} else {
+			opt.TemplateFileSystem = NewTemplateFileSystem(opt, false)
+		}
 	}
 
 	for _, f := range opt.TemplateFileSystem.ListFiles() {
@@ -394,6 +461,7 @@ func renderHandler(opt RenderOptions, tplSets []string) Handler {
 
 	return func(ctx *Context) {
 		r := &TplRender{
+			env:             ctx.env,
 			ResponseWriter:  ctx.Resp,
 			TemplateSet:     ts,
 			Opt:             &opt,
@@ -411,8 +479,8 @@ func renderHandler(opt RenderOptions, tplSets []string) Handler {
 	}
 }
 
-// Renderer is a Middleware that maps a macaron.Render service into the Macaron handler chain.
-// An single variadic macaron.RenderOptions struct can be optionally provided to configure
+// Renderer is a Middleware that maps a web.Render service into the Web handler chain.
+// An single variadic web.RenderOptions struct can be optionally provided to configure
 // HTML rendering. The default directory for templates is "templates" and the default
 // file extension is ".tmpl" and ".html".
 //
@@ -427,6 +495,7 @@ func Renderers(options RenderOptions, tplSets ...string) Handler {
 }
 
 type TplRender struct {
+	env string
 	http.ResponseWriter
 	*TemplateSet
 	Opt             *RenderOptions
@@ -536,7 +605,7 @@ func (r *TplRender) addYield(t *template.Template, tplName string, data interfac
 
 func (r *TplRender) renderBytes(setName, tplName string, data interface{}, htmlOpt ...HTMLOptions) (*bytes.Buffer, error) {
 	t := r.TemplateSet.Get(setName)
-	if Env == DEV {
+	if r.env == DEV {
 		opt := *r.Opt
 		opt.Directory = r.TemplateSet.GetDir(setName)
 		t = r.TemplateSet.Set(setName, &opt)

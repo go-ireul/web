@@ -1,6 +1,4 @@
-// +build go1.8
-
-// Copyright 2017 The Macaron Authors
+// Copyright 2014 The Macaron Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -14,11 +12,24 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package web
+package cache
 
-import "net/url"
+import (
+	"os"
+	"path"
+	"testing"
 
-// PathUnescape unescapes a path.
-func PathUnescape(s string) (string, error) {
-	return url.PathUnescape(s)
+	. "github.com/smartystreets/goconvey/convey"
+)
+
+func Test_FileCacher(t *testing.T) {
+	Convey("Test file cache adapter", t, func() {
+		dir := path.Join(os.TempDir(), "data/caches")
+		os.RemoveAll(dir)
+		testAdapter(Options{
+			Adapter:       "file",
+			AdapterConfig: dir,
+			Interval:      2,
+		})
+	})
 }

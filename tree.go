@@ -1,4 +1,4 @@
-// Copyright 2015 The Macaron Authors
+// Copyright 2015 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -12,13 +12,13 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
 	"regexp"
 	"strings"
 
-	"github.com/Unknwon/com"
+	"ireul.com/com"
 )
 
 type patternType int8
@@ -165,7 +165,7 @@ func (l *Leaf) URLPath(pairs ...string) string {
 	return urlPath
 }
 
-// Tree represents a router tree in Macaron.
+// Tree represents a router tree in Web.
 type Tree struct {
 	parent *Tree
 

@@ -1,4 +1,4 @@
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -12,11 +12,9 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"html/template"
 	"io"
 	"io/ioutil"
@@ -31,9 +29,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Unknwon/com"
-	"github.com/go-macaron/inject"
-	"golang.org/x/crypto/pbkdf2"
+	"ireul.com/com"
+	"ireul.com/web/inject"
 )
 
 // Locale reprents a localization interface.
@@ -80,9 +77,10 @@ func (invoke ContextInvoker) Invoke(params []interface{}) ([]reflect.Value, erro
 	return nil, nil
 }
 
-// Context represents the runtime context of current request of Macaron instance.
+// Context represents the runtime context of current request of Web instance.
 // It is the integration of most frequently used middlewares and helper methods.
 type Context struct {
+	env string
 	inject.Injector
 	handlers []Handler
 	action   Handler
@@ -270,7 +268,7 @@ func (ctx *Context) SetParams(name, val string) {
 
 // ReplaceAllParams replace all current params with given params
 func (ctx *Context) ReplaceAllParams(params Params) {
-	ctx.params = params;
+	ctx.params = params
 }
 
 // ParamsEscape returns escapred params result.
@@ -405,51 +403,6 @@ func (ctx *Context) GetCookieFloat64(name string) float64 {
 	return v
 }
 
-var defaultCookieSecret string
-
-// SetDefaultCookieSecret sets global default secure cookie secret.
-func (m *Macaron) SetDefaultCookieSecret(secret string) {
-	defaultCookieSecret = secret
-}
-
-// SetSecureCookie sets given cookie value to response header with default secret string.
-func (ctx *Context) SetSecureCookie(name, value string, others ...interface{}) {
-	ctx.SetSuperSecureCookie(defaultCookieSecret, name, value, others...)
-}
-
-// GetSecureCookie returns given cookie value from request header with default secret string.
-func (ctx *Context) GetSecureCookie(key string) (string, bool) {
-	return ctx.GetSuperSecureCookie(defaultCookieSecret, key)
-}
-
-// SetSuperSecureCookie sets given cookie value to response header with secret string.
-func (ctx *Context) SetSuperSecureCookie(secret, name, value string, others ...interface{}) {
-	key := pbkdf2.Key([]byte(secret), []byte(secret), 1000, 16, sha256.New)
-	text, err := com.AESGCMEncrypt(key, []byte(value))
-	if err != nil {
-		panic("error encrypting cookie: " + err.Error())
-	}
-
-	ctx.SetCookie(name, hex.EncodeToString(text), others...)
-}
-
-// GetSuperSecureCookie returns given cookie value from request header with secret string.
-func (ctx *Context) GetSuperSecureCookie(secret, name string) (string, bool) {
-	val := ctx.GetCookie(name)
-	if val == "" {
-		return "", false
-	}
-
-	text, err := hex.DecodeString(val)
-	if err != nil {
-		return "", false
-	}
-
-	key := pbkdf2.Key([]byte(secret), []byte(secret), 1000, 16, sha256.New)
-	text, err = com.AESGCMDecrypt(key, text)
-	return string(text), err == nil
-}
-
 func (ctx *Context) setRawContentHeader() {
 	ctx.Resp.Header().Set("Content-Description", "Raw content")
 	ctx.Resp.Header().Set("Content-Type", "text/plain")
@@ -483,7 +436,7 @@ func (ctx *Context) ServeFileContent(file string, names ...string) {
 
 	f, err := os.Open(file)
 	if err != nil {
-		if Env == PROD {
+		if ctx.env == PROD {
 			http.Error(ctx.Resp, "Internal Server Error", 500)
 		} else {
 			http.Error(ctx.Resp, err.Error(), 500)

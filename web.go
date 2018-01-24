@@ -1,6 +1,6 @@
 // +build go1.3
 
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -14,8 +14,8 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-// Package macaron is a high productive and modular web framework in Go.
-package macaron
+// Package web is a high productive and modular web framework in Go.
+package web
 
 import (
 	"io"
@@ -24,12 +24,9 @@ import (
 	"os"
 	"reflect"
 	"strings"
-	"sync"
 
-	"github.com/Unknwon/com"
-	"gopkg.in/ini.v1"
-
-	"github.com/go-macaron/inject"
+	"ireul.com/com"
+	"ireul.com/web/inject"
 )
 
 const _VERSION = "1.2.4.1123"
@@ -39,7 +36,7 @@ func Version() string {
 }
 
 // Handler can be any callable function.
-// Macaron attempts to inject services into the handler's argument list,
+// Web attempts to inject services into the handler's argument list,
 // and panics if an argument could not be fullfilled via dependency injection.
 type Handler interface{}
 
@@ -64,7 +61,7 @@ func (invoke internalServerErrorInvoker) Invoke(params []interface{}) ([]reflect
 // it wraps the handler automatically to have some performance gain.
 func validateAndWrapHandler(h Handler) Handler {
 	if reflect.TypeOf(h).Kind() != reflect.Func {
-		panic("Macaron handler must be a callable function")
+		panic("Web handler must be a callable function")
 	}
 
 	if !inject.IsFastInvoker(h) {
@@ -102,9 +99,13 @@ func validateAndWrapHandlers(handlers []Handler, wrappers ...func(Handler) Handl
 	return wrappedHandlers
 }
 
-// Macaron represents the top level web application.
+// Web represents the top level web application.
 // inject.Injector methods can be invoked to map services on a global level.
-type Macaron struct {
+type Web struct {
+	// Env is the environment that Web is executing in.
+	// The MACARON_ENV is read on initialization to set this variable.
+	env string
+
 	inject.Injector
 	befores  []BeforeHandler
 	handlers []Handler
@@ -117,16 +118,18 @@ type Macaron struct {
 	logger *log.Logger
 }
 
-// NewWithLogger creates a bare bones Macaron instance.
+// NewWithLogger creates a bare bones Web instance.
 // Use this method if you want to have full control over the middleware that is used.
 // You can specify logger output writer with this function.
-func NewWithLogger(out io.Writer) *Macaron {
-	m := &Macaron{
+func NewWithLogger(out io.Writer) *Web {
+	m := &Web{
+		env:      DEV,
 		Injector: inject.New(),
 		action:   func() {},
 		Router:   NewRouter(),
-		logger:   log.New(out, "[Macaron] ", 0),
+		logger:   log.New(out, log.Prefix(), log.Flags()),
 	}
+	m.SetEnv(os.Getenv("MACARON_ENV"))
 	m.Router.m = m
 	m.Map(m.logger)
 	m.Map(defaultReturnHandler())
@@ -137,15 +140,15 @@ func NewWithLogger(out io.Writer) *Macaron {
 	return m
 }
 
-// New creates a bare bones Macaron instance.
+// New creates a bare bones Web instance.
 // Use this method if you want to have full control over the middleware that is used.
-func New() *Macaron {
+func New() *Web {
 	return NewWithLogger(os.Stdout)
 }
 
-// Classic creates a classic Macaron with some basic default middleware:
-// macaron.Logger, macaron.Recovery and macaron.Static.
-func Classic() *Macaron {
+// Classic creates a classic Web with some basic default middleware:
+// web.Logger, web.Recovery and web.Static.
+func Classic() *Web {
 	m := New()
 	m.Use(Logger())
 	m.Use(Recovery())
@@ -156,7 +159,7 @@ func Classic() *Macaron {
 // Handlers sets the entire middleware stack with the given Handlers.
 // This will clear any current middleware handlers,
 // and panics if any of the handlers is not a callable function
-func (m *Macaron) Handlers(handlers ...Handler) {
+func (m *Web) Handlers(handlers ...Handler) {
 	m.handlers = make([]Handler, 0)
 	for _, handler := range handlers {
 		m.Use(handler)
@@ -164,30 +167,31 @@ func (m *Macaron) Handlers(handlers ...Handler) {
 }
 
 // Action sets the handler that will be called after all the middleware has been invoked.
-// This is set to macaron.Router in a macaron.Classic().
-func (m *Macaron) Action(handler Handler) {
+// This is set to web.Router in a web.Classic().
+func (m *Web) Action(handler Handler) {
 	handler = validateAndWrapHandler(handler)
 	m.action = handler
 }
 
 // BeforeHandler represents a handler executes at beginning of every request.
-// Macaron stops future process when it returns true.
+// Web stops future process when it returns true.
 type BeforeHandler func(rw http.ResponseWriter, req *http.Request) bool
 
-func (m *Macaron) Before(handler BeforeHandler) {
+func (m *Web) Before(handler BeforeHandler) {
 	m.befores = append(m.befores, handler)
 }
 
 // Use adds a middleware Handler to the stack,
 // and panics if the handler is not a callable func.
 // Middleware Handlers are invoked in the order that they are added.
-func (m *Macaron) Use(handler Handler) {
+func (m *Web) Use(handler Handler) {
 	handler = validateAndWrapHandler(handler)
 	m.handlers = append(m.handlers, handler)
 }
 
-func (m *Macaron) createContext(rw http.ResponseWriter, req *http.Request) *Context {
+func (m *Web) createContext(rw http.ResponseWriter, req *http.Request) *Context {
 	c := &Context{
+		env:      m.env,
 		Injector: inject.New(),
 		handlers: m.handlers,
 		action:   m.action,
@@ -205,10 +209,10 @@ func (m *Macaron) createContext(rw http.ResponseWriter, req *http.Request) *Cont
 	return c
 }
 
-// ServeHTTP is the HTTP Entry point for a Macaron instance.
+// ServeHTTP is the HTTP Entry point for a Web instance.
 // Useful if you want to control your own HTTP server.
 // Be aware that none of middleware will run without registering any router.
-func (m *Macaron) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
+func (m *Web) ServeHTTP(rw http.ResponseWriter, req *http.Request) {
 	if m.hasURLPrefix {
 		req.URL.Path = strings.TrimPrefix(req.URL.Path, m.urlPrefix)
 	}
@@ -233,7 +237,7 @@ func GetDefaultListenInfo() (string, int) {
 }
 
 // Run the http server. Listening on os.GetEnv("PORT") or 4000 by default.
-func (m *Macaron) Run(args ...interface{}) {
+func (m *Web) Run(args ...interface{}) {
 	host, port := GetDefaultListenInfo()
 	if len(args) == 1 {
 		switch arg := args[0].(type) {
@@ -253,12 +257,12 @@ func (m *Macaron) Run(args ...interface{}) {
 
 	addr := host + ":" + com.ToStr(port)
 	logger := m.GetVal(reflect.TypeOf(m.logger)).Interface().(*log.Logger)
-	logger.Printf("listening on %s (%s)\n", addr, safeEnv())
+	logger.Printf("listening on %s (%s)\n", addr, m.Env())
 	logger.Fatalln(http.ListenAndServe(addr, m))
 }
 
 // SetURLPrefix sets URL prefix of router layer, so that it support suburl.
-func (m *Macaron) SetURLPrefix(prefix string) {
+func (m *Web) SetURLPrefix(prefix string) {
 	m.urlPrefix = prefix
 	m.hasURLPrefix = len(m.urlPrefix) > 0
 }
@@ -277,58 +281,29 @@ const (
 )
 
 var (
-	// Env is the environment that Macaron is executing in.
-	// The MACARON_ENV is read on initialization to set this variable.
-	Env     = DEV
-	envLock sync.Mutex
-
 	// Path of work directory.
 	Root string
 
 	// Flash applies to current request.
 	FlashNow bool
-
-	// Configuration convention object.
-	cfg *ini.File
 )
 
-func setENV(e string) {
-	envLock.Lock()
-	defer envLock.Unlock()
-
-	if len(e) > 0 {
-		Env = e
+func (m *Web) SetEnv(e string) {
+	if e == DEV || e == PROD || e == TEST {
+		m.env = e
+	} else {
+		m.env = DEV
 	}
 }
 
-func safeEnv() string {
-	envLock.Lock()
-	defer envLock.Unlock()
-
-	return Env
+func (m *Web) Env() string {
+	return m.env
 }
 
 func init() {
-	setENV(os.Getenv("MACARON_ENV"))
-
 	var err error
 	Root, err = os.Getwd()
 	if err != nil {
 		panic("error getting work directory: " + err.Error())
 	}
-}
-
-// SetConfig sets data sources for configuration.
-func SetConfig(source interface{}, others ...interface{}) (_ *ini.File, err error) {
-	cfg, err = ini.Load(source, others...)
-	return Config(), err
-}
-
-// Config returns configuration convention object.
-// It returns an empty object if there is no one available.
-func Config() *ini.File {
-	if cfg == nil {
-		return ini.Empty()
-	}
-	return cfg
 }

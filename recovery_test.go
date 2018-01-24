@@ -1,5 +1,5 @@
 // Copyright 2013 Martini Authors
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -13,7 +13,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
 	"bytes"
@@ -28,10 +28,10 @@ import (
 func Test_Recovery(t *testing.T) {
 	Convey("Recovery from panic", t, func() {
 		buf := bytes.NewBufferString("")
-		setENV(DEV)
 
 		m := New()
-		m.Map(log.New(buf, "[Macaron] ", 0))
+		m.SetEnv(DEV)
+		m.Map(log.New(buf, "[Web] ", 0))
 		m.Use(func(res http.ResponseWriter, req *http.Request) {
 			res.Header().Set("Content-Type", "unpredictable")
 		})
@@ -53,9 +53,9 @@ func Test_Recovery(t *testing.T) {
 	Convey("Revocery panic to another response writer", t, func() {
 		resp := httptest.NewRecorder()
 		resp2 := httptest.NewRecorder()
-		setENV(DEV)
 
 		m := New()
+		m.SetEnv(DEV)
 		m.Use(Recovery())
 		m.Use(func(c *Context) {
 			c.MapTo(resp2, (*http.ResponseWriter)(nil))

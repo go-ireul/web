@@ -1,5 +1,5 @@
 // Copyright 2013 Martini Authors
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -13,7 +13,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
 	"bytes"
@@ -22,7 +22,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/Unknwon/com"
+	"ireul.com/com"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -31,7 +31,7 @@ func Test_Logger(t *testing.T) {
 	Convey("Global logger", t, func() {
 		buf := bytes.NewBufferString("")
 		m := New()
-		m.Map(log.New(buf, "[Macaron] ", 0))
+		m.Map(log.New(buf, "[Web] ", 0))
 		m.Use(Logger())
 		m.Use(func(res http.ResponseWriter) {
 			res.WriteHeader(http.StatusNotFound)

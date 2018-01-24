@@ -1,5 +1,5 @@
 // Copyright 2013 Martini Authors
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -13,7 +13,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
 	"net/http"
@@ -46,7 +46,7 @@ func Test_New(t *testing.T) {
 	})
 }
 
-func Test_Macaron_Before(t *testing.T) {
+func Test_Web_Before(t *testing.T) {
 	Convey("Register before handlers", t, func() {
 		m := New()
 		m.Before(func(rw http.ResponseWriter, req *http.Request) bool {
@@ -62,7 +62,7 @@ func Test_Macaron_Before(t *testing.T) {
 	})
 }
 
-func Test_Macaron_ServeHTTP(t *testing.T) {
+func Test_Web_ServeHTTP(t *testing.T) {
 	Convey("Serve HTTP requests", t, func() {
 		result := ""
 		m := New()
@@ -91,7 +91,7 @@ func Test_Macaron_ServeHTTP(t *testing.T) {
 	})
 }
 
-func Test_Macaron_Handlers(t *testing.T) {
+func Test_Web_Handlers(t *testing.T) {
 	Convey("Add custom handlers", t, func() {
 		result := ""
 		batman := func(c *Context) {
@@ -132,7 +132,7 @@ func Test_Macaron_Handlers(t *testing.T) {
 	})
 }
 
-func Test_Macaron_EarlyWrite(t *testing.T) {
+func Test_Web_EarlyWrite(t *testing.T) {
 	Convey("Write early content to response", t, func() {
 		result := ""
 		m := New()
@@ -158,7 +158,7 @@ func Test_Macaron_EarlyWrite(t *testing.T) {
 	})
 }
 
-func Test_Macaron_Written(t *testing.T) {
+func Test_Web_Written(t *testing.T) {
 	Convey("Written sign", t, func() {
 		resp := httptest.NewRecorder()
 		m := New()
@@ -174,7 +174,7 @@ func Test_Macaron_Written(t *testing.T) {
 	})
 }
 
-func Test_Macaron_Basic_NoRace(t *testing.T) {
+func Test_Web_Basic_NoRace(t *testing.T) {
 	Convey("Make sure no race between requests", t, func() {
 		m := New()
 		handlers := []Handler{func() {}, func() {}}
@@ -201,18 +201,12 @@ func Test_SetENV(t *testing.T) {
 			{"not_development", "not_development"},
 		}
 
-		for _, test := range tests {
-			setENV(test.in)
-			So(Env, ShouldEqual, test.out)
-		}
-	})
-}
+		m := New()
 
-func Test_Config(t *testing.T) {
-	Convey("Set and get configuration object", t, func() {
-		So(Config(), ShouldNotBeNil)
-		cfg, err := SetConfig([]byte(""))
-		So(err, ShouldBeNil)
-		So(cfg, ShouldNotBeNil)
+		for _, test := range tests {
+			m.SetEnv(test.in)
+			// auto correct env to 'development', 'production', 'test'
+			So(m.Env(), ShouldEqual, DEV)
+		}
 	})
 }

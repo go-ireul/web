@@ -1,4 +1,4 @@
-// Copyright 2014 The Macaron Authors
+// Copyright 2014 The Web Authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License"): you may
 // not use this file except in compliance with the License. You may obtain
@@ -12,7 +12,7 @@
 // License for the specific language governing permissions and limitations
 // under the License.
 
-package macaron
+package web
 
 import (
 	"bytes"
@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Unknwon/com"
+	"ireul.com/com"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
@@ -211,33 +211,6 @@ func Test_Context(t *testing.T) {
 			req, err = http.NewRequest("GET", "/get", nil)
 			So(err, ShouldBeNil)
 			req.Header.Set("Cookie", "user=Unknwon; uid=1; balance=1.25")
-			m.ServeHTTP(resp, req)
-			So(resp.Body.String(), ShouldEqual, "Unknwon")
-		})
-
-		Convey("Set and get secure cookie", func() {
-			m.SetDefaultCookieSecret("macaron")
-			m.Get("/set", func(ctx *Context) {
-				ctx.SetSecureCookie("user", "Unknwon", 1)
-			})
-
-			resp := httptest.NewRecorder()
-			req, err := http.NewRequest("GET", "/set", nil)
-			So(err, ShouldBeNil)
-			m.ServeHTTP(resp, req)
-
-			cookie := resp.Header().Get("Set-Cookie")
-
-			m.Get("/get", func(ctx *Context) string {
-				name, ok := ctx.GetSecureCookie("user")
-				So(ok, ShouldBeTrue)
-				return name
-			})
-
-			resp = httptest.NewRecorder()
-			req, err = http.NewRequest("GET", "/get", nil)
-			So(err, ShouldBeNil)
-			req.Header.Set("Cookie", cookie)
 			m.ServeHTTP(resp, req)
 			So(resp.Body.String(), ShouldEqual, "Unknwon")
 		})
