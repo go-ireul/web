@@ -99,6 +99,24 @@ func prepareOptions(options []Options) Options {
 	if len(options) > 0 {
 		opt = options[0]
 	}
+	if len(opt.Adapter) == 0 {
+		opt.Adapter = "memory"
+	}
+	if len(opt.CookieName) == 0 {
+		opt.CookieName = "session"
+	}
+	if len(opt.CookiePath) == 0 {
+		opt.CookiePath = "/"
+	}
+	if opt.Gclifetime == 0 {
+		opt.Gclifetime = 3600
+	}
+	if opt.Maxlifetime == 0 {
+		opt.Maxlifetime = opt.Gclifetime
+	}
+	if opt.IDLength == 0 {
+		opt.IDLength = 32
+	}
 	return opt
 }
 

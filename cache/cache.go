@@ -68,6 +68,9 @@ func prepareOptions(options []Options) Options {
 	if len(opt.Adapter) == 0 {
 		opt.Adapter = "memory"
 	}
+	if opt.Interval == 0 {
+		opt.Interval = 60
+	}
 	return opt
 }
 
