@@ -30,14 +30,14 @@ import (
 
 // FileStore represents a file session store implementation.
 type FileStore struct {
-	p    *FileProvider
+	p    *FileAdapter
 	sid  string
 	lock sync.RWMutex
 	data map[interface{}]interface{}
 }
 
 // NewFileStore creates and returns a file session store.
-func NewFileStore(p *FileProvider, sid string, kv map[interface{}]interface{}) *FileStore {
+func NewFileStore(p *FileAdapter, sid string, kv map[interface{}]interface{}) *FileStore {
 	return &FileStore{
 		p:    p,
 		sid:  sid,
@@ -98,15 +98,15 @@ func (s *FileStore) Flush() error {
 	return nil
 }
 
-// FileProvider represents a file session provider implementation.
-type FileProvider struct {
+// FileAdapter represents a file session provider implementation.
+type FileAdapter struct {
 	lock        sync.RWMutex
 	maxlifetime int64
 	rootPath    string
 }
 
 // Init initializes file session provider with given root path.
-func (p *FileProvider) Init(maxlifetime int64, rootPath string) error {
+func (p *FileAdapter) Init(maxlifetime int64, rootPath string) error {
 	p.lock.Lock()
 	p.maxlifetime = maxlifetime
 	p.rootPath = rootPath
@@ -114,12 +114,12 @@ func (p *FileProvider) Init(maxlifetime int64, rootPath string) error {
 	return nil
 }
 
-func (p *FileProvider) filepath(sid string) string {
+func (p *FileAdapter) filepath(sid string) string {
 	return path.Join(p.rootPath, string(sid[0]), string(sid[1]), sid)
 }
 
 // Read returns raw session store by session ID.
-func (p *FileProvider) Read(sid string) (_ RawStore, err error) {
+func (p *FileAdapter) Read(sid string) (_ RawStore, err error) {
 	filename := p.filepath(sid)
 	if err = os.MkdirAll(path.Dir(filename), 0700); err != nil {
 		return nil, err
@@ -159,20 +159,20 @@ func (p *FileProvider) Read(sid string) (_ RawStore, err error) {
 }
 
 // Exist returns true if session with given ID exists.
-func (p *FileProvider) Exist(sid string) bool {
+func (p *FileAdapter) Exist(sid string) bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	return com.IsFile(p.filepath(sid))
 }
 
 // Destory deletes a session by session ID.
-func (p *FileProvider) Destory(sid string) error {
+func (p *FileAdapter) Destory(sid string) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 	return os.Remove(p.filepath(sid))
 }
 
-func (p *FileProvider) regenerate(oldsid, sid string) (err error) {
+func (p *FileAdapter) regenerate(oldsid, sid string) (err error) {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -205,7 +205,7 @@ func (p *FileProvider) regenerate(oldsid, sid string) (err error) {
 }
 
 // Regenerate regenerates a session store from old session ID to new one.
-func (p *FileProvider) Regenerate(oldsid, sid string) (_ RawStore, err error) {
+func (p *FileAdapter) Regenerate(oldsid, sid string) (_ RawStore, err error) {
 	if err := p.regenerate(oldsid, sid); err != nil {
 		return nil, err
 	}
@@ -214,7 +214,7 @@ func (p *FileProvider) Regenerate(oldsid, sid string) (_ RawStore, err error) {
 }
 
 // Count counts and returns number of sessions.
-func (p *FileProvider) Count() int {
+func (p *FileAdapter) Count() int {
 	count := 0
 	if err := filepath.Walk(p.rootPath, func(path string, fi os.FileInfo, err error) error {
 		if err != nil {
@@ -233,7 +233,7 @@ func (p *FileProvider) Count() int {
 }
 
 // GC calls GC to clean expired sessions.
-func (p *FileProvider) GC() {
+func (p *FileAdapter) GC() {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -257,5 +257,5 @@ func (p *FileProvider) GC() {
 }
 
 func init() {
-	Register("file", &FileProvider{})
+	Register("file", &FileAdapter{})
 }

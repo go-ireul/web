@@ -126,7 +126,7 @@ func (c *RedisCacher) Flush() error {
 // StartAndGC starts GC routine based on config string settings.
 // AdapterConfig: redis://localhost:3333/1
 func (c *RedisCacher) StartAndGC(opts cache.Options) error {
-	c.hsetName = "MacaronCache"
+	c.hsetName = "webcache"
 	c.occupyMode = opts.OccupyMode
 
 	opt, err := redis.ParseURL(opts.AdapterConfig)
@@ -135,11 +135,7 @@ func (c *RedisCacher) StartAndGC(opts cache.Options) error {
 	}
 
 	c.c = redis.NewClient(opt)
-	if err = c.c.Ping().Err(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.c.Ping().Err()
 }
 
 func init() {

@@ -73,9 +73,9 @@ var _ Store = &store{}
 // Options represents a struct for specifying configuration options for the session middleware.
 type Options struct {
 	// Name of provider. Default is "memory".
-	Provider string
-	// Provider configuration, it's corresponding to provider.
-	ProviderConfig string
+	Adapter string
+	// Adapter configuration, it's corresponding to provider.
+	AdapterConfig string
 	// Cookie name to save session ID. Default is "MacaronSession".
 	CookieName string
 	// Cookie path to store. Default is "/".
@@ -106,7 +106,7 @@ func prepareOptions(options []Options) Options {
 // An single variadic session.Options struct can be optionally provided to configure.
 func Sessioner(options ...Options) web.Handler {
 	opt := prepareOptions(options)
-	manager, err := NewManager(opt.Provider, opt)
+	manager, err := NewManager(opt.Adapter, opt)
 	if err != nil {
 		panic(err)
 	}
@@ -153,8 +153,8 @@ func Sessioner(options ...Options) web.Handler {
 	}
 }
 
-// Provider is the interface that provides session manipulations.
-type Provider interface {
+// Adapter is the interface that provides session manipulations.
+type Adapter interface {
 	// Init initializes session provider.
 	Init(gclifetime int64, config string) error
 	// Read returns raw session store by session ID.
@@ -171,10 +171,10 @@ type Provider interface {
 	GC()
 }
 
-var providers = make(map[string]Provider)
+var providers = make(map[string]Adapter)
 
 // Register registers a provider.
-func Register(name string, provider Provider) {
+func Register(name string, provider Adapter) {
 	if provider == nil {
 		panic("session: cannot register provider with nil value")
 	}
@@ -193,7 +193,7 @@ func Register(name string, provider Provider) {
 
 // Manager represents a struct that contains session provider and its configuration.
 type Manager struct {
-	provider Provider
+	provider Adapter
 	opt      Options
 }
 
@@ -204,7 +204,7 @@ func NewManager(name string, opt Options) (*Manager, error) {
 	if !ok {
 		return nil, fmt.Errorf("session: unknown provider '%s'(forgotten import?)", name)
 	}
-	return &Manager{p, opt}, p.Init(opt.Maxlifetime, opt.ProviderConfig)
+	return &Manager{p, opt}, p.Init(opt.Maxlifetime, opt.AdapterConfig)
 }
 
 // sessionId generates a new session ID with rand string, unix nano time, remote addr by hash function.

@@ -94,8 +94,8 @@ func (s *RedisStore) Flush() error {
 	return nil
 }
 
-// RedisProvider represents a redis session provider implementation.
-type RedisProvider struct {
+// RedisAdapter represents a redis session provider implementation.
+type RedisAdapter struct {
 	c        *redis.Client
 	duration time.Duration
 	prefix   string
@@ -103,7 +103,7 @@ type RedisProvider struct {
 
 // Init initializes redis session provider.
 // configs: redis://:password@localhost:3333/1
-func (p *RedisProvider) Init(maxlifetime int64, configs string) (err error) {
+func (p *RedisAdapter) Init(maxlifetime int64, configs string) (err error) {
 	p.duration, err = time.ParseDuration(fmt.Sprintf("%ds", maxlifetime))
 	if err != nil {
 		return err
@@ -119,7 +119,7 @@ func (p *RedisProvider) Init(maxlifetime int64, configs string) (err error) {
 }
 
 // Read returns raw session store by session ID.
-func (p *RedisProvider) Read(sid string) (session.RawStore, error) {
+func (p *RedisAdapter) Read(sid string) (session.RawStore, error) {
 	psid := p.prefix + sid
 	if !p.Exist(sid) {
 		if err := p.c.Set(psid, "", 0).Err(); err != nil {
@@ -145,18 +145,18 @@ func (p *RedisProvider) Read(sid string) (session.RawStore, error) {
 }
 
 // Exist returns true if session with given ID exists.
-func (p *RedisProvider) Exist(sid string) bool {
+func (p *RedisAdapter) Exist(sid string) bool {
 	has, err := p.c.Exists(p.prefix + sid).Result()
 	return err == nil && has != 0
 }
 
 // Destory deletes a session by session ID.
-func (p *RedisProvider) Destory(sid string) error {
+func (p *RedisAdapter) Destory(sid string) error {
 	return p.c.Del(p.prefix + sid).Err()
 }
 
 // Regenerate regenerates a session store from old session ID to new one.
-func (p *RedisProvider) Regenerate(oldsid, sid string) (_ session.RawStore, err error) {
+func (p *RedisAdapter) Regenerate(oldsid, sid string) (_ session.RawStore, err error) {
 	poldsid := p.prefix + oldsid
 	psid := p.prefix + sid
 
@@ -192,13 +192,13 @@ func (p *RedisProvider) Regenerate(oldsid, sid string) (_ session.RawStore, err 
 }
 
 // Count counts and returns number of sessions.
-func (p *RedisProvider) Count() int {
+func (p *RedisAdapter) Count() int {
 	return int(p.c.DbSize().Val())
 }
 
 // GC calls GC to clean expired sessions.
-func (_ *RedisProvider) GC() {}
+func (_ *RedisAdapter) GC() {}
 
 func init() {
-	session.Register("redis", &RedisProvider{})
+	session.Register("redis", &RedisAdapter{})
 }

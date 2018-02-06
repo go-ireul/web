@@ -84,8 +84,8 @@ func (s *MemStore) Flush() error {
 	return nil
 }
 
-// MemProvider represents a in-memory session provider implementation.
-type MemProvider struct {
+// MemAdapter represents a in-memory session provider implementation.
+type MemAdapter struct {
 	lock        sync.RWMutex
 	maxLifetime int64
 	data        map[string]*list.Element
@@ -94,7 +94,7 @@ type MemProvider struct {
 }
 
 // Init initializes memory session provider.
-func (p *MemProvider) Init(maxLifetime int64, _ string) error {
+func (p *MemAdapter) Init(maxLifetime int64, _ string) error {
 	p.lock.Lock()
 	p.maxLifetime = maxLifetime
 	p.lock.Unlock()
@@ -102,7 +102,7 @@ func (p *MemProvider) Init(maxLifetime int64, _ string) error {
 }
 
 // update expands time of session store by given ID.
-func (p *MemProvider) update(sid string) error {
+func (p *MemAdapter) update(sid string) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -115,7 +115,7 @@ func (p *MemProvider) update(sid string) error {
 }
 
 // Read returns raw session store by session ID.
-func (p *MemProvider) Read(sid string) (_ RawStore, err error) {
+func (p *MemAdapter) Read(sid string) (_ RawStore, err error) {
 	p.lock.RLock()
 	e, ok := p.data[sid]
 	p.lock.RUnlock()
@@ -137,7 +137,7 @@ func (p *MemProvider) Read(sid string) (_ RawStore, err error) {
 }
 
 // Exist returns true if session with given ID exists.
-func (p *MemProvider) Exist(sid string) bool {
+func (p *MemAdapter) Exist(sid string) bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 
@@ -146,7 +146,7 @@ func (p *MemProvider) Exist(sid string) bool {
 }
 
 // Destory deletes a session by session ID.
-func (p *MemProvider) Destory(sid string) error {
+func (p *MemAdapter) Destory(sid string) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
 
@@ -161,7 +161,7 @@ func (p *MemProvider) Destory(sid string) error {
 }
 
 // Regenerate regenerates a session store from old session ID to new one.
-func (p *MemProvider) Regenerate(oldsid, sid string) (RawStore, error) {
+func (p *MemAdapter) Regenerate(oldsid, sid string) (RawStore, error) {
 	if p.Exist(sid) {
 		return nil, fmt.Errorf("new sid '%s' already exists", sid)
 	}
@@ -184,12 +184,12 @@ func (p *MemProvider) Regenerate(oldsid, sid string) (RawStore, error) {
 }
 
 // Count counts and returns number of sessions.
-func (p *MemProvider) Count() int {
+func (p *MemAdapter) Count() int {
 	return p.list.Len()
 }
 
 // GC calls GC to clean expired sessions.
-func (p *MemProvider) GC() {
+func (p *MemAdapter) GC() {
 	p.lock.RLock()
 	for {
 		// No session in the list.
@@ -213,5 +213,5 @@ func (p *MemProvider) GC() {
 }
 
 func init() {
-	Register("memory", &MemProvider{list: list.New(), data: make(map[string]*list.Element)})
+	Register("memory", &MemAdapter{list: list.New(), data: make(map[string]*list.Element)})
 }
