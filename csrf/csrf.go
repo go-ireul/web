@@ -17,6 +17,8 @@
 package csrf
 
 import (
+	"fmt"
+	"html/template"
 	"net/http"
 	"time"
 
@@ -43,6 +45,8 @@ type CSRF interface {
 	ValidToken(t string) bool
 	// Error replies to the request with a custom function when ValidToken fails.
 	Error(w http.ResponseWriter)
+	// Create a form html
+	CreateHTML() template.HTML
 }
 
 type csrf struct {
@@ -105,6 +109,10 @@ func (c *csrf) ValidToken(t string) bool {
 // Error replies to the request when ValidToken fails.
 func (c *csrf) Error(w http.ResponseWriter) {
 	c.ErrorFunc(w)
+}
+
+func (c *csrf) CreateHTML() template.HTML {
+	return template.HTML(fmt.Sprintf(`<input type="hidden" name="%[1]s" value="%[2]s" />`, c.Form, c.GetToken()))
 }
 
 // Options maintains options to manage behavior of Generate.
@@ -185,6 +193,7 @@ func Generate(options ...Options) web.Handler {
 			CookieHTTPOnly: opt.CookieHTTPOnly,
 			ErrorFunc:      opt.ErrorFunc,
 		}
+		ctx.Data["CSRF"] = x
 		ctx.MapTo(x, (*CSRF)(nil))
 
 		if opt.Origin && len(ctx.Req.Header.Get("Origin")) > 0 {
