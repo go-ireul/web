@@ -24,9 +24,9 @@ import (
 )
 
 const (
-	KEY       = "quay"
-	USER_ID   = "12345678"
-	ACTION_ID = "POST /form"
+	Key      = "quay"
+	UserID   = "12345678"
+	ActionID = "POST /form"
 )
 
 var (
@@ -36,10 +36,10 @@ var (
 
 func Test_ValidToken(t *testing.T) {
 	Convey("Validate token", t, func() {
-		tok := generateTokenAtTime(KEY, USER_ID, ACTION_ID, now)
-		So(validTokenAtTime(tok, KEY, USER_ID, ACTION_ID, oneMinuteFromNow), ShouldBeTrue)
-		So(validTokenAtTime(tok, KEY, USER_ID, ACTION_ID, now.Add(TIMEOUT-1*time.Nanosecond)), ShouldBeTrue)
-		So(validTokenAtTime(tok, KEY, USER_ID, ACTION_ID, now.Add(-1*time.Minute)), ShouldBeTrue)
+		tok := generateTokenAtTime(Key, UserID, ActionID, now)
+		So(validTokenAtTime(tok, Key, UserID, ActionID, oneMinuteFromNow), ShouldBeTrue)
+		So(validTokenAtTime(tok, Key, UserID, ActionID, now.Add(TIMEOUT-1*time.Nanosecond)), ShouldBeTrue)
+		So(validTokenAtTime(tok, Key, UserID, ActionID, now.Add(-1*time.Minute)), ShouldBeTrue)
 	})
 }
 
@@ -57,14 +57,14 @@ func Test_InvalidToken(t *testing.T) {
 			name, key, userID, actionID string
 			t                           time.Time
 		}{
-			{"Bad key", "foobar", USER_ID, ACTION_ID, oneMinuteFromNow},
-			{"Bad userID", KEY, "foobar", ACTION_ID, oneMinuteFromNow},
-			{"Bad actionID", KEY, USER_ID, "foobar", oneMinuteFromNow},
-			{"Expired", KEY, USER_ID, ACTION_ID, now.Add(TIMEOUT)},
-			{"More than 1 minute from the future", KEY, USER_ID, ACTION_ID, now.Add(-1*time.Nanosecond - 1*time.Minute)},
+			{"Bad key", "foobar", UserID, ActionID, oneMinuteFromNow},
+			{"Bad userID", Key, "foobar", ActionID, oneMinuteFromNow},
+			{"Bad actionID", Key, UserID, "foobar", oneMinuteFromNow},
+			{"Expired", Key, UserID, ActionID, now.Add(TIMEOUT)},
+			{"More than 1 minute from the future", Key, UserID, ActionID, now.Add(-1*time.Nanosecond - 1*time.Minute)},
 		}
 
-		tok := generateTokenAtTime(KEY, USER_ID, ACTION_ID, now)
+		tok := generateTokenAtTime(Key, UserID, ActionID, now)
 		for _, itt := range invalidTokenTests {
 			So(validTokenAtTime(tok, itt.key, itt.userID, itt.actionID, itt.t), ShouldBeFalse)
 		}
@@ -83,7 +83,7 @@ func Test_ValidateBadData(t *testing.T) {
 		}
 
 		for _, bdt := range badDataTests {
-			So(validTokenAtTime(bdt.tok, KEY, USER_ID, ACTION_ID, oneMinuteFromNow), ShouldBeFalse)
+			So(validTokenAtTime(bdt.tok, Key, UserID, ActionID, oneMinuteFromNow), ShouldBeFalse)
 		}
 	})
 }

@@ -25,12 +25,6 @@ import (
 	"ireul.com/web/session"
 )
 
-const _VERSION = "0.1.0"
-
-func Version() string {
-	return _VERSION
-}
-
 // CSRF represents a CSRF service and is used to get the current token and validate a suspect token.
 type CSRF interface {
 	// Return HTTP header to search for token.
@@ -204,8 +198,8 @@ func Generate(options ...Options) web.Handler {
 		}
 
 		needsNew := false
-		oldUid := sess.Get(opt.oldSeesionKey)
-		if oldUid == nil || oldUid.(string) != x.ID {
+		oldUID := sess.Get(opt.oldSeesionKey)
+		if oldUID == nil || oldUID.(string) != x.ID {
 			needsNew = true
 			sess.Set(opt.oldSeesionKey, x.ID)
 		} else {
