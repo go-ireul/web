@@ -110,7 +110,8 @@ func prepareStaticOption(dir string, opt StaticOptions) StaticOptions {
 	}
 	if opt.FileSystem == nil {
 		if opt.BinFS {
-			opt.FileSystem = binfs.Find(dir).FileSystem()
+			comps := strings.Split(dir, "/")
+			opt.FileSystem = binfs.Find(comps...).FileSystem()
 		} else {
 			opt.FileSystem = newStaticFileSystem(dir)
 		}
